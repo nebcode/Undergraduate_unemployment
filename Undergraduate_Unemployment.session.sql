@@ -47,3 +47,20 @@ FROM 'C:/VS Code/Undergraduate_unemployment/outcomes_by_major.csv'
 WITH (FORMAT csv, HEADER true);
 
 
+CREATE TABLE Interest_rate(
+    Date DATE,
+    Rate REAL
+);
+COPY Interest_rates
+FROM 'C:/VS Code/Undergraduate_unemployment/Interest_rate.csv'
+WITH (FORMAT csv, HEADER true);
+
+CREATE TABLE CPI(
+    Date DATE,
+    CPI REAL
+);
+COPY CPI
+FROM 'C:/VS Code/Undergraduate_unemployment/CPI.csv'
+WITH (FORMAT csv, HEADER true);
+
+
