@@ -1,4 +1,4 @@
-DROP TABLE test_connection;
+DROP TABLE Interest_rates;
 
 CREATE TABLE unemployed (
     Date DATE,
@@ -74,29 +74,26 @@ FROM 'C:/VS Code/Undergraduate_unemployment/CFNAI.csv'
 WITH (FORMAT csv, HEADER true);
 SELECT * FROM CFNAI;
 
+CREATE TABLE demand AS
 SELECT 
-    u.Date,
-    u.Young_workers,
-    u.All_workers,
-    u.Recent_graduates,
-    u.College_graduates,
-    ir.Rate AS Interest_Rate,
-    c.CPI,
-    cf.CFNAI
-FROM unemployed u
-JOIN Interest_rate ir ON u.Date = ir.Date
-JOIN CPI c ON u.Date = c.Date
-JOIN CFNAI cf ON u.Date = cf.Date;
--- This query combines unemployment data with interest rates, CPI, and CFNAI for comprehensive analysis.
+    unemployed.Date,
+    unemployed.Young_workers,
+    unemployed.All_workers,
+    unemployed.Recent_graduates,
+    unemployed.College_graduates,
+    CPI.cpi,
+    Interest_rate.rate,
+    CFNAI.cfnai
+FROM unemployed
+JOIN CPI ON unemployed.Date = CPI.Date
+JOIN Interest_rate ON unemployed.Date = Interest_rate.Date
+JOIN CFNAI ON unemployed.Date = CFNAI.Date;
 
-CREATE TABLE jobs(
-    Date DATE,
-    Total_jobs REAL,
-    Unemployed REAL,
-    Job_openings REAL
-);
+ALTER TABLE demand
+DROP COLUMN young_workers,
+DROP COLUMN college_graduates;
 
-DROP TABLE IF EXISTS jobs;
+SELECT * FROM demand;
 
 
 CREATE TABLE jobs (
@@ -119,26 +116,84 @@ COPY jobs
 FROM 'C:/VS Code/Undergraduate_unemployment/Jobs.csv'
 WITH (FORMAT csv, HEADER true);
 
--- Create a new table to store the monthly job data with the first 11 rows from the original jobs table
-CREATE TABLE monthly_jobs AS jobs;
-
-CREATE TABLE demand AS
+CREATE TABLE monthly_jobs AS
 SELECT 
-    unemployed.Date,
-    unemployed.Young_workers,
-    unemployed.All_workers,
-    unemployed.Recent_graduates,
-    unemployed.College_graduates,
-    CPI.cpi,
-    Interest_rate.rate,
-    CFNAI.cfnai
-FROM unemployed
-JOIN CPI ON unemployed.Date = CPI.Date
-JOIN Interest_rate ON unemployed.Date = Interest_rate.Date
-JOIN CFNAI ON unemployed.Date = CFNAI.Date;
+    TO_DATE(Year || '-' || month_num, 'YYYY-MM') AS date,
+    jobs AS jobs
+FROM (
+    SELECT Year, '01' AS month_num, Jan AS jobs FROM jobs
+    UNION ALL
+    SELECT Year, '02', Feb FROM jobs
+    UNION ALL
+    SELECT Year, '03', Mar FROM jobs
+    UNION ALL
+    SELECT Year, '04', Apr FROM jobs
+    UNION ALL
+    SELECT Year, '05', May FROM jobs
+    UNION ALL
+    SELECT Year, '06', Jun FROM jobs
+    UNION ALL
+    SELECT Year, '07', Jul FROM jobs
+    UNION ALL
+    SELECT Year, '08', Aug FROM jobs
+    UNION ALL
+    SELECT Year, '09', Sep FROM jobs
+    UNION ALL
+    SELECT Year, '10', Oct FROM jobs
+    UNION ALL
+    SELECT Year, '11', Nov FROM jobs
+    UNION ALL
+    SELECT Year, '12', Dec FROM jobs
+) AS monthly_jobs
+ORDER BY date;
 
-ALTER TABLE demand
-DROP COLUMN young_workers,
-DROP COLUMN college_graduates;
 
-SELECT * FROM demand;
+
+CREATE TABLE LSI AS
+SELECT 
+    underemployed.Date,
+    underemployed.recent_graduates,
+    monthly_jobs.jobs
+FROM underemployed
+JOIN monthly_jobs ON underemployed.Date = monthly_jobs.Date;
+
+
+
+CREATE TABLE u3(
+    Date DATE,
+    U3 REAL
+);
+COPY u3
+FROM 'C:/VS Code/Undergraduate_unemployment/u3.csv'
+WITH (FORMAT csv, HEADER true);
+
+CREATE TABLE u6(
+    Date DATE,
+    U6 REAL
+);
+COPY u6
+FROM 'C:/VS Code/Undergraduate_unemployment/u6.csv'
+WITH (FORMAT csv, HEADER true);
+
+CREATE TABLE u3_u6 AS
+SELECT 
+    u3.Date,
+    u3.U3,
+    u6.U6
+FROM u3
+JOIN u6 ON u3.Date = u6.Date;
+
+
+ALTER TABLE LSI
+ADD COLUMN lsi NUMERIC;
+UPDATE LSI
+SET lsi = (recent_graduates::NUMERIC / jobs) * 100;
+
+SELECT * FROM LSI;
+
+
+
+COPY demand TO 'C:/VS Code/Undergraduate_unemployment/final_tables/demand.csv' WITH (FORMAT CSV, HEADER);
+COPY LSI TO 'C:/VS Code/Undergraduate_unemployment/final_tables/LSI.csv' WITH (FORMAT CSV, HEADER);
+COPY u3_u6 TO 'C:/VS Code/Undergraduate_unemployment/final_tables/u3_u6.csv' WITH (FORMAT CSV, HEADER);
+
